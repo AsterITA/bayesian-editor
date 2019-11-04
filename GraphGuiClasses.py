@@ -68,9 +68,6 @@ class Edge(QtWidgets.QGraphicsItem):
         self.x2 = node2.x + 20  # set x coordinate of other end of edge
         self.y2 = node2.y + 20  # set y coordinate of other end of edge
 
-        # self.weight = weight # set edge weight of edge
-        self.midx = (self.x1 + self.x2) / 2  # find midpoint x cooridinate of edge
-        self.midy = (self.y1 + self.y2) / 2  # find midpoint y cooridinate of edge
         self.highlighted = False
 
     def get_directed_arrow_points(self, x1, y1, x2, y2, d):
@@ -158,6 +155,7 @@ class Edge(QtWidgets.QGraphicsItem):
 class GraphScene(QtWidgets.QGraphicsScene):
     def __init__(self):
         super().__init__()
+        self.movingNode = None
         self.importing = False
         self.setSceneRect(0, 0, 2500, 2500)  # set size of graphical scene
         self.nodes = {}  # node dictionary
@@ -188,13 +186,45 @@ class GraphScene(QtWidgets.QGraphicsScene):
 
     def mousePressEvent(self, event):
 
-        if event.button() != QtCore.Qt.LeftButton:  # if right button pressed
+        if event.button() == QtCore.Qt.RightButton:  # if right button pressed
             self.select_node(event)  # call selectd node function
             return
 
-        self.add_node(event)  # otherwise call add node function
-
         QtWidgets.QGraphicsScene.mousePressEvent(self, event)  # call original function to maintain functionality
+
+    def mouseReleaseEvent(self, event):
+        if not self.movingNode:
+            if event.button() == QtCore.Qt.LeftButton:  # if right button pressed
+                self.add_node(event)  # otherwise call add node function
+                return
+        else:
+            self.movingNode = None
+        QtWidgets.QGraphicsScene.mouseReleaseEvent(self, event)  # call original function to maintain functionality
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() == QtCore.Qt.LeftButton:  # if left button pressed
+            if self.movingNode is None:
+                node = self.itemAt(event.scenePos(),
+                                   QtGui.QTransform())  # get item clicked on at this position in scene
+                if type(node) is Node:  # if item is a node
+                    self.movingNode = node
+            else:
+                # Update node position
+                self.movingNode.x = event.scenePos().x()
+                self.movingNode.y = event.scenePos().y()
+                # Updates arcs
+                for edgeNode in self.movingNode.parents + self.movingNode.children:
+                    try:
+                        edge = self.edges[(self.movingNode.val, edgeNode)]
+                        edge.x1 = edge.node1.x + 20
+                        edge.y1 = edge.node1.y + 20
+                    except KeyError:
+                        edge = self.edges[(edgeNode, self.movingNode.val)]
+                        edge.x2 = edge.node2.x + 20
+                        edge.y2 = edge.node2.y + 20
+                self.update()
+
+        QtWidgets.QGraphicsScene.mouseMoveEvent(self, event)  # call original function to maintain functionality
 
     def keyPressEvent(self, event):
 
