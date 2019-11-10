@@ -409,8 +409,8 @@ class GraphScene(QtWidgets.QGraphicsScene):
             self.InvalidInMsg.setText('Arc already present between the two nodes')
             self.InvalidInMsg.exec_()
             return False
-        if len(node2.parents) >= 5:
-            self.InvalidInMsg.setText("Node {} can't have more than 5 parents".format(node2_val))
+        if len(node2.parents) >= 4:
+            self.InvalidInMsg.setText("Node {} can't have more than 4 parents".format(node2_val))
             self.InvalidInMsg.exec_()
             return False
         edge = Edge(node1, node2)  # create new edge
