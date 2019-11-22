@@ -22,7 +22,6 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
         self.font.setBold(True)
         self.font.setWeight(75)
         self.grid = QtWidgets.QGridLayout()
-        emptyBox = QtWidgets.QLabel()  # Box vuoto in alto a sinistra nella griglia
         # Metto il nome del nodo attuale in alto a destra nella griglia
         label = QtWidgets.QLabel()
         label.setFont(self.font)
@@ -31,6 +30,7 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
         var = -1
         if self.posterior is None:
             if self.numParents > 0:
+                emptyBox = QtWidgets.QLabel()  # Box vuoto in alto a sinistra nella griglia
                 self.grid.addWidget(emptyBox, 0, 0, 1, self.numParents)
                 self.grid.addWidget(label, 0, self.numParents, 1, 3)
                 # Creo la la riga delle variabili
@@ -46,7 +46,6 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
             else:
                 self.grid.addWidget(label, 0, 0, 1, 3)
         else:
-            self.grid.addWidget(emptyBox, 0, 0, 1, 2)
             self.grid.addWidget(label, 0, 0, 1, 2)
         # Creo la riga del vero/falso affianco le variabili
         falseLabel = QtWidgets.QLabel()
