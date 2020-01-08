@@ -1,4 +1,5 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QScrollArea
 
 
 class Ui_CPTWindow(QtWidgets.QMainWindow):
@@ -9,6 +10,7 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
         self.nodeCPT = self.scene.bn.cpt(nodeName)  # CPT del nodo
         self.numParents = self.nodeCPT.nbrDim() - 1  # Numero di genitori
         self.nodeName = nodeName  # Nome del nodo
+        self.scrollArea = QScrollArea()
         self.sliders = []
         self.trueLabels = []
         self.falseLabels = []
@@ -99,8 +101,8 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
 
         central_widget = QtWidgets.QWidget()
         central_widget.setLayout(self.grid)
-
-        self.setCentralWidget(central_widget)
+        self.scrollArea.setWidget(central_widget)
+        self.setCentralWidget(self.scrollArea)
 
     def genProbabilityBoxes(self):
         splittedCPT = self.nodeCPT.__str__().split('/')
