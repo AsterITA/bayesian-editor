@@ -359,6 +359,19 @@ class GraphScene(QtWidgets.QGraphicsScene):
         if not self.importing:
             node_val, ok = QtWidgets.QInputDialog.getText(QtWidgets.QWidget(), 'Input Dialog',
                                                           'Enter node name:')  # use dialog to get node value to be added
+            if node_val:  # In case user didn't want to create a node, he can just not type the name
+                variable_type = "input"
+                while variable_type != "R" and variable_type != "r" and variable_type != "L" and variable_type != "l":
+                    variable_type, ok = QtWidgets.QInputDialog.getText(QtWidgets.QWidget(), 'Input Dialog',
+                                                                       'Enter variable type: (L for Labelized, R for Range)')  # use dialog to get node variable type
+                if variable_type == "R" or variable_type == "r":
+                    minVal = 999999
+                    maxVal = -999999
+                    while maxVal < minVal:
+                        minVal, ok = QtWidgets.QInputDialog.getInt(QtWidgets.QWidget(), 'Input Dialog',
+                                                                   'Enter mininum:')  # use dialog to get node minimum value
+                        maxVal, ok = QtWidgets.QInputDialog.getInt(QtWidgets.QWidget(), 'Input Dialog',
+                                                                   'Enter maximum:')  # use dialog to get node maximum value
         elif import_node is not None:  # Import the name from the file
             node_val = import_node[0]
         else:  # Import name from previous populated list
@@ -373,8 +386,16 @@ class GraphScene(QtWidgets.QGraphicsScene):
                 self.addItem(node)  # add node to scene
                 self.nodes[node.val] = node  # add node to node dictionary
                 if not self.importing:
-                    self.bn.add(gum.LabelizedVariable(node.val, "", 2))
-                    self.bn.cpt(node.val).fillWith([0.5, 0.5])
+                    if variable_type == "R" or variable_type == "r":
+                        var = gum.RangeVariable(node_val, "", minVal, maxVal)
+                        potential = []
+                        for i in range(var.domainSize()):
+                            potential.append(0.5)
+                    else:
+                        var = gum.LabelizedVariable(node.val, "", 2)
+                        potential = [0.5, 0.5]
+                    self.bn.add(var)
+                    self.bn.cpt(node.val).fillWith(potential)
             else:
                 self.InvalidInMsg.setText(
                     'Node name must consist of between 1 and 10 characters')  # print message if invalid dialog input
@@ -409,10 +430,6 @@ class GraphScene(QtWidgets.QGraphicsScene):
             self.InvalidInMsg.setText('Arc already present between the two nodes')
             self.InvalidInMsg.exec_()
             return False
-        # if len(node2.parents) >= 4:
-        #     self.InvalidInMsg.setText("Node {} can't have more than 4 parents".format(node2_val))
-        #     self.InvalidInMsg.exec_()
-        #     return False
         edge = Edge(node1, node2)  # create new edge
         self.addItem(edge)  # add edge to scene
         if not self.importing:
