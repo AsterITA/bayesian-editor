@@ -11,9 +11,14 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
         self.numParents = self.nodeCPT.nbrDim() - 1  # Numero di genitori
         self.nodeName = nodeName  # Nome del nodo
         self.scrollArea = QScrollArea()
-        self.sliders = []
-        self.trueLabels = []
-        self.falseLabels = []
+        if self.nodeCPT.var_dims[-1] == 2:  # If it's a LabelizedVariable
+            self.labelizedVariable = True
+            self.sliders = []
+            self.trueLabels = []
+            self.falseLabels = []
+        else:  # If it's a RangeVariable
+            self.labelizedVariable = False
+            self.boxes = []
         self.setupUI()
 
     def setupUI(self):
@@ -44,25 +49,44 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
                     self.grid.addWidget(label, 1, var, 1, 1)
 
                 # Creo la griglia dei vero/falso delle rispettive variabili sulla sinistra
-                self.genGrid(self.numParents, 1, 0)
+                domainSet = []
+                for parent in self.nodeCPT.var_names:
+                    if parent != self.nodeName:
+                        parent = self.scene.bn.variableFromName(parent)
+                        domain = parent.domain()
+                        if domain[
+                            0] == '<':  # Nel caso si tratti di una labelizedVariable, di solito ci sono solo le label di vero e falso
+                            domain = ["F", "T"]
+                        else:  # Nel caso di una rangeVariable, inserisco nel domainSet tutte le label del dominio
+                            domain = domain[1:-1].split(",")
+                            domain = list(range(int(domain[0]), int(domain[1]) + 1))
+                        domainSet.append(domain)
+                self.genGrid(1, 0, domainSet)
             else:
                 self.grid.addWidget(label, 0, 0, 1, 3)
         else:
             self.grid.addWidget(label, 0, 0, 1, 2)
         # Creo la riga del vero/falso affianco le variabili
-        falseLabel = QtWidgets.QLabel()
-        falseLabel.setFont(self.font)
-        falseLabel.setAlignment(QtCore.Qt.AlignCenter)
-        falseLabel.setText("F")
-        self.grid.addWidget(falseLabel, 1, var + 1, 1, 1)
-        trueLabel = QtWidgets.QLabel()
-        trueLabel.setFont(self.font)
-        trueLabel.setAlignment(QtCore.Qt.AlignCenter)
-        trueLabel.setText("T")
+        domains = self.scene.bn.variableFromName(self.nodeName).domain()
+        if domains[
+            0] == '<':  # Nel caso si tratti di una labelizedVariable, di solito ci sono solo le label di vero e falso
+            domains = ["F", "T"]
+        else:  # Nel caso di una rangeVariable, inserisco nel domainSet tutte le label del dominio
+            domains = domains[1:-1].split(",")
+            domains = list(range(int(domains[0]), int(domains[1]) + 1))
+
+        for col_offset, domain in enumerate(domains, start=1):
+            label = QtWidgets.QLabel()
+            label.setFont(self.font)
+            label.setAlignment(QtCore.Qt.AlignCenter)
+            label.setText(str(domain))
+            self.grid.addWidget(label, 1, var + col_offset, 1, 1)
         if self.posterior is None:
-            self.grid.addWidget(trueLabel, 1, var + 3, 1, 1)
             # Creo i box delle proabilità
-            self.genProbabilityBoxes()
+            if self.labelizedVariable:
+                self.genSliders()
+            else:
+                self.genBoxes()
             # Aggiungo il bottone per confermare il CPT e chiudere la finestra
             button = QtWidgets.QPushButton('OK', self)
             self.grid.addWidget(button, self.grid.rowCount(), 0, 1, self.grid.columnCount())
@@ -88,7 +112,6 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
             self.verticalLayout.addWidget(self.inference_btn)
             self.grid.addLayout(self.verticalLayout, self.grid.rowCount(), 0, 1, self.grid.columnCount())
         else:
-            self.grid.addWidget(trueLabel, 1, var + 2, 1, 1)
             posterior = self.posterior.__str__().split('/')
             falsePosterior = QtWidgets.QLabel()
             falsePosterior.setAlignment(QtCore.Qt.AlignCenter)
@@ -104,7 +127,30 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
         self.scrollArea.setWidget(central_widget)
         self.setCentralWidget(self.scrollArea)
 
-    def genProbabilityBoxes(self):
+    def genBoxes(self):
+        listCPT = self.nodeCPT.toarray()
+        col = len(self.nodeCPT.var_names)
+        n_rows = self.grid.rowCount() - 2
+        defaultValue = 1 / self.nodeCPT.var_dims[-1]
+        if n_rows == 0:
+            n_rows += 1
+        for row in range(n_rows):
+            value = 0
+            for i in range(self.nodeCPT.var_dims[-1]):
+                value += listCPT[row][
+                    i]  # Check if the sum of the values in the CPT is 1, otherwise it was not setted and the default value wil be setted
+            for i in range(self.nodeCPT.var_dims[-1]):
+                self.boxes[row][i].append(QtWidgets.QDoubleSpinBox())
+                self.boxes[row][i].setMaximum(1)
+                self.boxes[row][i].setMinimum(0)
+                self.boxes[row][i].setSingleStep(0.01)
+                if value != 1:  # Set the default value
+                    self.boxes[row][i].setValue(defaultValue)
+                else:  # Set the read value
+                    self.boxes[row][i].setValue(listCPT[row][i])
+                self.grid.addWidget(self.boxes[row][i], row + 2, col + i)
+
+    def genSliders(self):
         splittedCPT = self.nodeCPT.__str__().split('/')
         col = self.grid.columnCount()
         n_rows = self.grid.rowCount() - 2
@@ -152,19 +198,21 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
         self.nodeCPT.fillWith(probabilities)
         self.close()
 
-    def genGrid(self, numParents, s_row, col):
-        if numParents == 0:
+    def genGrid(self, firstRow, col, domains):
+        if col >= len(domains):
             return
         else:
-            n = 2 ** numParents
-            for row in range(1, n + 1):
+            numDomains = len(domains[col])
+            nRows = 1
+            for domain in domains[col:]:
+                nRows *= len(domain)
+            step = nRows / numDomains
+            for row in range(1, nRows + 1):
                 label = QtWidgets.QLabel()
                 label.setFont(self.font)
                 label.setAlignment(QtCore.Qt.AlignCenter)
-                if row <= n / 2:
-                    label.setText("F")
-                else:
-                    label.setText("T")
-                self.grid.addWidget(label, s_row + row, col, 1, 1)
-            self.genGrid(numParents - 1, s_row, col + 1)
-            self.genGrid(numParents - 1, s_row + n / 2, col + 1)
+                index = (row - 1) / step
+                label.setText(str(domains[col][int(index)]))
+                self.grid.addWidget(label, firstRow + row, col, 1, 1)
+            for i in range(numDomains):
+                self.genGrid(firstRow + i * step, col + 1, domains)
