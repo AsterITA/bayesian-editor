@@ -124,6 +124,7 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
 
         central_widget = QtWidgets.QWidget()
         central_widget.setLayout(self.grid)
+        self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setWidget(central_widget)
         self.setCentralWidget(self.scrollArea)
 
