@@ -35,62 +35,57 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
         label.setAlignment(QtCore.Qt.AlignCenter)
         label.setText(self.nodeName)
         var = -1
-        if self.posterior is None:
-            if self.numParents > 0:
-                emptyBox = QtWidgets.QLabel()  # Box vuoto in alto a sinistra nella griglia
-                self.grid.addWidget(emptyBox, 0, 0, 1, self.numParents)
-                self.grid.addWidget(label, 0, self.numParents, 1, 3)
-                # Creo la la riga delle variabili
-                for var in range(self.numParents):
-                    label = QtWidgets.QLabel()
-                    label.setFont(self.font)
-                    label.setAlignment(QtCore.Qt.AlignCenter)
-                    label.setText(self.nodeCPT.var_names[var])
-                    self.grid.addWidget(label, 1, var, 1, 1)
+        if self.labelizedVariable:
+            if self.posterior is None:
+                if self.numParents > 0:
+                    emptyBox = QtWidgets.QLabel()  # Box vuoto in alto a sinistra nella griglia
+                    self.grid.addWidget(emptyBox, 0, 0, 1, self.numParents)
+                    self.grid.addWidget(label, 0, self.numParents, 1, 3)
+                    # Creo la la riga delle variabili
+                    for var in range(self.numParents):
+                        label = QtWidgets.QLabel()
+                        label.setFont(self.font)
+                        label.setAlignment(QtCore.Qt.AlignCenter)
+                        label.setText(self.nodeCPT.var_names[var])
+                        self.grid.addWidget(label, 1, var, 1, 1)
 
-                # Creo la griglia dei vero/falso delle rispettive variabili sulla sinistra
-                domainSet = []
-                for parent in self.nodeCPT.var_names:
-                    if parent != self.nodeName:
-                        parent = self.scene.bn.variableFromName(parent)
-                        domain = parent.domain()
-                        if domain[
-                            0] == '<':  # Nel caso si tratti di una labelizedVariable, di solito ci sono solo le label di vero e falso
-                            domain = ["F", "T"]
-                        else:  # Nel caso di una rangeVariable, inserisco nel domainSet tutte le label del dominio
-                            domain = domain[1:-1].split(",")
-                            domain = list(range(int(domain[0]), int(domain[1]) + 1))
-                        domainSet.append(domain)
-                self.genGrid(1, 0, domainSet)
+                    # Creo la griglia dei vero/falso delle rispettive variabili sulla sinistra
+                    domainSet = []
+                    for parent in self.nodeCPT.var_names:
+                        if parent != self.nodeName:
+                            parent = self.scene.bn.variableFromName(parent)
+                            domain = parent.domain()
+                            if domain[0] == '<':  # Nel caso si tratti di una labelizedVariable,
+                                # di solito ci sono solo le label di vero e falso
+                                domain = ["F", "T"]
+                            else:  # Nel caso di una rangeVariable, inserisco nel domainSet tutte le label del dominio
+                                domain = domain[1:-1].split(",")
+                                domain = list(range(int(domain[0]), int(domain[1]) + 1))
+                            domainSet.append(domain)
+                    self.genGrid(1, 0, domainSet)
+                else:
+                    self.grid.addWidget(label, 0, 0, 1, 3)
             else:
-                self.grid.addWidget(label, 0, 0, 1, 3)
+                self.grid.addWidget(label, 0, 0, 1, 2)
+            # Creo la riga del vero/falso affianco le variabili
+            for col_offset, domain in enumerate(["F", "T"], start=1):
+                label = QtWidgets.QLabel()
+                label.setFont(self.font)
+                label.setAlignment(QtCore.Qt.AlignCenter)
+                label.setText(str(domain))
+                if col_offset == 2:
+                    col_offset += 1  # Offset one more because of the sliders
+                self.grid.addWidget(label, 1, var + col_offset, 1, 1)
         else:
             self.grid.addWidget(label, 0, 0, 1, 2)
-        # Creo la riga del vero/falso affianco le variabili
-        domains = self.scene.bn.variableFromName(self.nodeName).domain()
-        if domains[
-            0] == '<':  # Nel caso si tratti di una labelizedVariable, di solito ci sono solo le label di vero e falso
-            domains = ["F", "T"]
-        else:  # Nel caso di una rangeVariable, inserisco nel domainSet tutte le label del dominio
-            domains = domains[1:-1].split(",")
-            domains = list(range(int(domains[0]), int(domains[1]) + 1))
-
-        for col_offset, domain in enumerate(domains, start=1):
-            label = QtWidgets.QLabel()
-            label.setFont(self.font)
-            label.setAlignment(QtCore.Qt.AlignCenter)
-            label.setText(str(domain))
-            self.grid.addWidget(label, 1, var + col_offset, 1, 1)
         if self.posterior is None:
             # Creo i box delle proabilità
             if self.labelizedVariable:
                 self.genSliders()
-            else:
-                self.genBoxes()
-            # Aggiungo il bottone per confermare il CPT e chiudere la finestra
-            button = QtWidgets.QPushButton('OK', self)
-            self.grid.addWidget(button, self.grid.rowCount(), 0, 1, self.grid.columnCount())
-            button.clicked.connect(self.closeWindow)
+                # Aggiungo il bottone per confermare il CPT e chiudere la finestra
+                button = QtWidgets.QPushButton('OK', self)
+                self.grid.addWidget(button, self.grid.rowCount(), 0, 1, self.grid.columnCount())
+                button.clicked.connect(self.closeWindow)
 
             # Aggiungo comandi per l'inferenza
             self.verticalLayout = QtWidgets.QVBoxLayout()
@@ -111,7 +106,7 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
                 lambda: self.scene.makeInference(self.nodeName, self.inferenceMode.currentIndex()))
             self.verticalLayout.addWidget(self.inference_btn)
             self.grid.addLayout(self.verticalLayout, self.grid.rowCount(), 0, 1, self.grid.columnCount())
-        else:
+        elif self.labelizedVariable:
             posterior = self.posterior.__str__().split('/')
             falsePosterior = QtWidgets.QLabel()
             falsePosterior.setAlignment(QtCore.Qt.AlignCenter)
@@ -128,28 +123,28 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
         self.scrollArea.setWidget(central_widget)
         self.setCentralWidget(self.scrollArea)
 
-    def genBoxes(self):
-        listCPT = self.nodeCPT.toarray()
-        col = len(self.nodeCPT.var_names)
-        n_rows = self.grid.rowCount() - 2
-        defaultValue = 1 / self.nodeCPT.var_dims[-1]
-        if n_rows == 0:
-            n_rows += 1
-        for row in range(n_rows):
-            value = 0
-            for i in range(self.nodeCPT.var_dims[-1]):
-                value += listCPT[row][
-                    i]  # Check if the sum of the values in the CPT is 1, otherwise it was not setted and the default value wil be setted
-            for i in range(self.nodeCPT.var_dims[-1]):
-                self.boxes[row][i].append(QtWidgets.QDoubleSpinBox())
-                self.boxes[row][i].setMaximum(1)
-                self.boxes[row][i].setMinimum(0)
-                self.boxes[row][i].setSingleStep(0.01)
-                if value != 1:  # Set the default value
-                    self.boxes[row][i].setValue(defaultValue)
-                else:  # Set the read value
-                    self.boxes[row][i].setValue(listCPT[row][i])
-                self.grid.addWidget(self.boxes[row][i], row + 2, col + i)
+    # def genBoxes(self):
+    #     listCPT = self.nodeCPT.toarray()
+    #     col = len(self.nodeCPT.var_names)
+    #     n_rows = self.grid.rowCount() - 2
+    #     defaultValue = 1 / self.nodeCPT.var_dims[-1]
+    #     if n_rows == 0:
+    #         n_rows += 1
+    #     for row in range(n_rows):
+    #         value = 0
+    #         for i in range(self.nodeCPT.var_dims[-1]):
+    #             value += listCPT[row][
+    #                 i]  # Check if the sum of the values in the CPT is 1, otherwise it was not setted and the default value wil be setted
+    #         for i in range(self.nodeCPT.var_dims[-1]):
+    #             self.boxes[row][i].append(QtWidgets.QDoubleSpinBox())
+    #             self.boxes[row][i].setMaximum(1)
+    #             self.boxes[row][i].setMinimum(0)
+    #             self.boxes[row][i].setSingleStep(0.01)
+    #             if value != 1:  # Set the default value
+    #                 self.boxes[row][i].setValue(defaultValue)
+    #             else:  # Set the read value
+    #                 self.boxes[row][i].setValue(listCPT[row][i])
+    #             self.grid.addWidget(self.boxes[row][i], row + 2, col + i)
 
     def genSliders(self):
         splittedCPT = self.nodeCPT.__str__().split('/')
