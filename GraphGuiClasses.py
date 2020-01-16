@@ -2,6 +2,7 @@ import math
 
 import pyAgrum as gum
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QInputDialog
 
 from NodeCPTGui import Ui_CPTWindow
 
@@ -264,7 +265,7 @@ class GraphScene(QtWidgets.QGraphicsScene):
             ie = gum.VariableElimination(self.bn)
         ie.makeInference()
         try:
-            self.CPTWindow.closeWindow()
+            self.CPTWindow.close()
             self.inferenceWindow = Ui_CPTWindow(self, nodeName, ie.posterior(nodeName))
             self.inferenceWindow.show()
         except Exception as e:
@@ -360,33 +361,32 @@ class GraphScene(QtWidgets.QGraphicsScene):
             node_val, ok = QtWidgets.QInputDialog.getText(QtWidgets.QWidget(), 'Input Dialog',
                                                           'Enter node name:')  # use dialog to get node value to be added
             if node_val:  # In case user didn't want to create a node, he can just not type the name
-                variable_type = "input"
-                while variable_type != "R" and variable_type != "r" and variable_type != "L" and variable_type != "l":
-                    variable_type, ok = QtWidgets.QInputDialog.getText(QtWidgets.QWidget(), 'Input Dialog',
-                                                                       'Enter variable type: (L for Labelized, R for Range)')  # use dialog to get node variable type
-                if variable_type == "R" or variable_type == "r":
-                    minVal = 999999
-                    maxVal = -999999
-                    while maxVal < minVal:
-                        minVal, ok = QtWidgets.QInputDialog.getInt(QtWidgets.QWidget(), 'Input Dialog',
-                                                                   'Enter mininum:')  # use dialog to get node minimum value
-                        maxVal, ok = QtWidgets.QInputDialog.getInt(QtWidgets.QWidget(), 'Input Dialog',
-                                                                   'Enter maximum:')  # use dialog to get node maximum value
+                if node_val not in self.nodes:
+                    variable_type, ok = QInputDialog.getItem(QtWidgets.QWidget(), "Select node type",
+                                                             "Type:", ["LabelizedVariable", "RangeVariable"], 0, False)
+                    if variable_type == "RangeVariable":
+                        minVal = 999999
+                        maxVal = -999999
+                        while maxVal < minVal:
+                            minVal, ok = QtWidgets.QInputDialog.getInt(QtWidgets.QWidget(), 'Input Dialog',
+                                                                       'Enter mininum:')  # use dialog to get node minimum value
+                            maxVal, ok = QtWidgets.QInputDialog.getInt(QtWidgets.QWidget(), 'Input Dialog',
+                                                                       'Enter maximum:')  # use dialog to get node maximum value
+                else:
+                    self.InvalidInMsg.setText('Node already present')
+                    self.InvalidInMsg.exec_()
+                    return
         elif import_node is not None:  # Import the name from the file
             node_val = import_node[0]
         else:  # Import name from previous populated list
             node_val = self.importNames.pop()
         if node_val:  # dialog value was input
-            if node_val in self.nodes:
-                self.InvalidInMsg.setText('Node already present')
-                self.InvalidInMsg.exec_()
-                return
             if 10 > len(str(node_val)) > 0:  # if input was between 1 and 10 characters
                 node = Node(x - 20, y - 20, str(node_val))  # create a new node at the given x and y coordinates
                 self.addItem(node)  # add node to scene
                 self.nodes[node.val] = node  # add node to node dictionary
                 if not self.importing:
-                    if variable_type == "R" or variable_type == "r":
+                    if variable_type == "RangeVariable":
                         var = gum.RangeVariable(node_val, "", minVal, maxVal)
                         potential = []
                         for i in range(var.domainSize()):
