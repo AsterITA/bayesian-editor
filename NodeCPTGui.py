@@ -5,7 +5,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from iteration_utilities import deepflatten
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from pylab import *
-from scipy.stats import maxwell, norm
+from scipy.stats import norm, maxwell
 
 
 @dataclass
@@ -67,56 +67,56 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
         label.setAlignment(QtCore.Qt.AlignCenter)
         label.setText(self.nodeName)
         self.verticalLayout.addWidget(label)
-        self.genVariables()
-        label = QtWidgets.QLabel()
-        label.setFont(self.font)
-        label.setAlignment(QtCore.Qt.AlignCenter)
-        label.setText("Function")
-        self.grid.addWidget(label, 1, self.numParents)
-        label = QtWidgets.QLabel()
-        label.setFont(self.font)
-        label.setAlignment(QtCore.Qt.AlignCenter)
-        label.setText("Start")
-        self.grid.addWidget(label, 1, self.numParents + 1)
-        label = QtWidgets.QLabel()
-        label.setFont(self.font)
-        label.setAlignment(QtCore.Qt.AlignCenter)
-        label.setText("Stop")
-        self.grid.addWidget(label, 1, self.numParents + 2)
-        nrows = self.grid.rowCount()
-        if self.numParents == 0:
-            nrows += 1
-        for index, row in enumerate(range(2, nrows)):
-            self.HistogramArguments.append(HistogramArguments())
-            self.HistogramArguments[index].function = QtWidgets.QComboBox()
-            self.HistogramArguments[index].function.addItems(["Norm", "Maxwell"])
-            self.HistogramArguments[index].vmin = QtWidgets.QDoubleSpinBox()
-            self.HistogramArguments[index].vmin.setMinimum(-100)
-            self.HistogramArguments[index].vmin.setMaximum(100)
-            self.HistogramArguments[index].vmax = QtWidgets.QDoubleSpinBox()
-            self.HistogramArguments[index].vmax.setMinimum(-100)
-            self.HistogramArguments[index].vmax.setMaximum(100)
-            self.grid.addWidget(self.HistogramArguments[index].function, row, self.numParents)
-            self.grid.addWidget(self.HistogramArguments[index].vmin, row, self.numParents + 1)
-            self.grid.addWidget(self.HistogramArguments[index].vmax, row, self.numParents + 2)
+        if self.posterior is None:
+            self.genVariables()
+            label = QtWidgets.QLabel()
+            label.setFont(self.font)
+            label.setAlignment(QtCore.Qt.AlignCenter)
+            label.setText("Function")
+            self.grid.addWidget(label, 1, self.numParents)
+            label = QtWidgets.QLabel()
+            label.setFont(self.font)
+            label.setAlignment(QtCore.Qt.AlignCenter)
+            label.setText("Start")
+            self.grid.addWidget(label, 1, self.numParents + 1)
+            label = QtWidgets.QLabel()
+            label.setFont(self.font)
+            label.setAlignment(QtCore.Qt.AlignCenter)
+            label.setText("Stop")
+            self.grid.addWidget(label, 1, self.numParents + 2)
+            nrows = self.grid.rowCount()
+            if self.numParents == 0:
+                nrows += 1
+            for index, row in enumerate(range(2, nrows)):
+                self.HistogramArguments.append(HistogramArguments())
+                self.HistogramArguments[index].function = QtWidgets.QComboBox()
+                self.HistogramArguments[index].function.addItems(["Norm", "Maxwell"])
+                self.HistogramArguments[index].vmin = QtWidgets.QDoubleSpinBox()
+                self.HistogramArguments[index].vmin.setRange(-1000, 1000)
+                self.HistogramArguments[index].vmax = QtWidgets.QDoubleSpinBox()
+                self.HistogramArguments[index].vmax.setRange(-1000, 1000)
+                self.grid.addWidget(self.HistogramArguments[index].function, row, self.numParents)
+                self.grid.addWidget(self.HistogramArguments[index].vmin, row, self.numParents + 1)
+                self.grid.addWidget(self.HistogramArguments[index].vmax, row, self.numParents + 2)
 
-        widget = QtWidgets.QWidget()
-        widget.setLayout(self.grid)
-        self.verticalLayout.addWidget(widget)
-        # Aggiungo il bottone per confermare il CPT e chiudere la finestra
-        horizontalLayout = QtWidgets.QHBoxLayout()
-        button = QtWidgets.QPushButton('OK', self)
-        button.clicked.connect(self.closeWindow)
-        horizontalLayout.addWidget(button)
-        button = QtWidgets.QPushButton('Apply', self)
-        button.clicked.connect(self.applyCPT)
-        horizontalLayout.addWidget(button)
-        widget = QtWidgets.QWidget()
-        widget.setLayout(horizontalLayout)
-        self.verticalLayout.addWidget(widget)
+            widget = QtWidgets.QWidget()
+            widget.setLayout(self.grid)
+            self.verticalLayout.addWidget(widget)
+            # Aggiungo il bottone per confermare il CPT e chiudere la finestra
+            horizontalLayout = QtWidgets.QHBoxLayout()
+            button = QtWidgets.QPushButton('OK', self)
+            button.clicked.connect(self.closeWindow)
+            horizontalLayout.addWidget(button)
+            button = QtWidgets.QPushButton('Apply', self)
+            button.clicked.connect(self.applyCPT)
+            horizontalLayout.addWidget(button)
+            widget = QtWidgets.QWidget()
+            widget.setLayout(horizontalLayout)
+            self.verticalLayout.addWidget(widget)
         # self.verticalLayout.addWidget(self.toolbar)
         self.verticalLayout.addWidget(self.canvas)
-        self.setupInferenceLayout()
+        if self.posterior is None:
+            self.setupInferenceLayout()
         self.plot()
 
     def plot(self):
@@ -124,25 +124,30 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
         # create an axis
         ax = self.figure.add_subplot(111)
         # get the data from the CPT
+        if self.posterior is None:
+            cpt = self.nodeCPT
+        else:
+            cpt = self.posterior
         values = []
-        for i in self.nodeCPT.loopIn():
-            values.append(self.nodeCPT.get(i))
+        for i in cpt.loopIn():
+            values.append(cpt.get(i))
         # plot the data
-        for line in self.make_chunks(values, self.nodeCPT.var_dims[-1]):
+        for line in self.make_chunks(values, cpt.var_dims[-1]):
             ax.plot(line)
         title("P(" + self.nodeName + ")")
-        legendStr = ""
-        for row in range(2, self.grid.rowCount()):
-            if row != 2:
-                legendStr += ";"
-            legendStr += "P(" + self.nodeName + "|"
-            for col, variable in enumerate(self.nodeCPT.var_names):
-                if variable != self.nodeName:
-                    if col != 0:
-                        legendStr += ", "
-                    legendStr += variable + "=" + self.grid.itemAtPosition(row, col).widget().text()
-            legendStr += ")"
-        legend(legendStr.split(";"), loc="best")
+        if self.posterior is None:
+            legendStr = ""
+            for row in range(2, self.grid.rowCount()):
+                if row != 2:
+                    legendStr += ";"
+                legendStr += "P(" + self.nodeName + "|"
+                for col, variable in enumerate(cpt.var_names):
+                    if variable != self.nodeName:
+                        if col != 0:
+                            legendStr += ", "
+                        legendStr += variable + "=" + self.grid.itemAtPosition(row, col).widget().text()
+                legendStr += ")"
+            legend(legendStr.split(";"), loc="best")
         # refresh canvas
         self.canvas.draw()
 
