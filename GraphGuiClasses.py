@@ -2,7 +2,7 @@ import math
 
 import pyAgrum as gum
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QInputDialog
+from PyQt5.QtWidgets import QInputDialog, QDialog
 
 from NodeCPTGui import Ui_CPTWindow
 
@@ -19,6 +19,46 @@ from NodeCPTGui import Ui_CPTWindow
         This file contains objects for graphically displaying nodes and edges of a graph as well as the results of graph traversals.
 
 '''
+
+
+class InputDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.grid = QtWidgets.QGridLayout()
+        self.setWindowTitle("Select range of the variable")
+        font = QtGui.QFont()
+        font.setPointSize(12)
+        font.setBold(True)
+        font.setWeight(75)
+        label = QtWidgets.QLabel()
+        label.setFont(font)
+        label.setAlignment(QtCore.Qt.AlignCenter)
+        label.setText("Minimum:")
+        self.grid.addWidget(label, 0, 0)
+        label = QtWidgets.QLabel()
+        label.setFont(font)
+        label.setAlignment(QtCore.Qt.AlignCenter)
+        label.setText("Maximum:")
+        self.grid.addWidget(label, 0, 1)
+        self.spinBoxes = [QtWidgets.QSpinBox(), QtWidgets.QSpinBox()]
+        self.grid.addWidget(self.spinBoxes[0], 1, 0)
+        self.grid.addWidget(self.spinBoxes[1], 1, 1)
+        button = QtWidgets.QPushButton('OK', self)
+        button.clicked.connect(self.closeWindow)
+        self.grid.addWidget(button, 2, 0, 1, 2)
+        self.setLayout(self.grid)
+
+        # set up message box for displaying invalid input alerts
+        self.InvalidInMsg = QtWidgets.QMessageBox()
+        self.InvalidInMsg.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        self.InvalidInMsg.setWindowTitle('Invalid input alert!')
+
+    def closeWindow(self):
+        if self.spinBoxes[0].value() <= self.spinBoxes[1].value():
+            self.close()
+        else:
+            self.InvalidInMsg.setText("The minimum value must be lower or equal the maximum value")
+            self.InvalidInMsg.exec_()
 
 
 class Node(QtWidgets.QGraphicsItem):
@@ -365,13 +405,10 @@ class GraphScene(QtWidgets.QGraphicsScene):
                     variable_type, ok = QInputDialog.getItem(QtWidgets.QWidget(), "Select node type",
                                                              "Type:", ["LabelizedVariable", "RangeVariable"], 0, False)
                     if variable_type == "RangeVariable":
-                        minVal = 999999
-                        maxVal = -999999
-                        while maxVal < minVal:
-                            minVal, ok = QtWidgets.QInputDialog.getInt(QtWidgets.QWidget(), 'Input Dialog',
-                                                                       'Enter mininum:')  # use dialog to get node minimum value
-                            maxVal, ok = QtWidgets.QInputDialog.getInt(QtWidgets.QWidget(), 'Input Dialog',
-                                                                       'Enter maximum:')  # use dialog to get node maximum value
+                        inputter = InputDialog()
+                        inputter.exec_()
+                        minVal = inputter.spinBoxes[0].value()
+                        maxVal = inputter.spinBoxes[1].value()
                 else:
                     self.InvalidInMsg.setText('Node already present')
                     self.InvalidInMsg.exec_()
