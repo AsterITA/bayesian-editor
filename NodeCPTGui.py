@@ -29,12 +29,12 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
         self.nodeName = nodeName  # Nome del nodo
         self.scrollArea = QtWidgets.QScrollArea()
         self.grid = QtWidgets.QGridLayout()
+        self.central_widget = QtWidgets.QWidget()
         self.setWindowTitle("CPT of " + self.nodeName)
         if self.nodeCPT.var_dims[-1] == 2:  # If it's a LabelizedVariable
-            central_widget = QtWidgets.QWidget()
-            central_widget.setLayout(self.grid)
+            self.central_widget.setLayout(self.grid)
             self.scrollArea.setWidgetResizable(True)
-            self.scrollArea.setWidget(central_widget)
+            self.scrollArea.setWidget(self.central_widget)
             self.setCentralWidget(self.scrollArea)
             self.labelizedVariable = True
             self.sliders = []
@@ -54,11 +54,16 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
             # self.toolbar = NavigationToolbar(self.canvas, self)
             self.verticalLayout = QtWidgets.QVBoxLayout()
             self.verticalLayout.setObjectName("verticalLayout_2")
-            widget = QtWidgets.QWidget()
-            widget.setLayout(self.verticalLayout)
-            self.setCentralWidget(widget)
+            self.central_widget.setLayout(self.verticalLayout)
+            if self.posterior is None:
+                self.scrollArea.setMinimumSize(670, 730)
+            else:
+                self.scrollArea.setMinimumSize(670, 550)
+            self.scrollArea.setWidget(self.central_widget)
+            self.setCentralWidget(self.scrollArea)
             self.HistogramArguments = []
             self.setupRangeUI()
+            self.central_widget.adjustSize()
 
     def setupRangeUI(self):
         # Metto il nome del nodo attuale in alto a destra nella griglia
