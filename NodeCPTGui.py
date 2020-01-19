@@ -3,7 +3,11 @@ from itertools import islice
 
 import matplotlib.pyplot as plt
 from PyQt5 import QtCore, QtGui, QtWidgets
+from iteration_utilities import deepflatten
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from numpy import linspace
+from scipy.stats import norm, maxwell
+from sympy import var, lambdify, sympify
 
 
 @dataclass
@@ -298,7 +302,6 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
                 probabilities.append(float(true.text()))
             self.nodeCPT.fillWith(probabilities)
         else:
-            from scipy.stats import norm, maxwell
             # Calculate all the values
             functions = []
             for index, args in enumerate(self.HistogramArguments, start=1):
@@ -311,7 +314,6 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
                     function = self.getUserFunction(index)
                 functions.append(self.normalize(function, args.vmin.value(), args.vmax.value()))
             # Flatten all the values in a single list
-            from iteration_utilities import deepflatten
             functions = list(deepflatten(functions))
             # Update the cpt with the values
             for cpt, value in zip(self.nodeCPT.loopIn(), functions):
@@ -346,12 +348,10 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
 
     # we truncate a pdf, so we need to normalize
     def normalize(self, rv, vmin, vmax):
-        from numpy import linspace
         pdf = rv(linspace(vmin, vmax, self.nodeCPT.var_dims[-1]))
         return pdf / sum(pdf)
 
     def getUserFunction(self, index):
-        from sympy import var, lambdify, sympify
         var('x')
         while True:
             func, ok = QtWidgets.QInputDialog.getText(QtWidgets.QWidget(), 'Input Dialog',
