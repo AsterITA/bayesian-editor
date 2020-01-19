@@ -3,9 +3,7 @@ from itertools import islice
 
 import matplotlib.pyplot as plt
 from PyQt5 import QtCore, QtGui, QtWidgets
-from iteration_utilities import deepflatten
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from scipy.stats import norm, maxwell
 
 
 @dataclass
@@ -300,6 +298,7 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
                 probabilities.append(float(true.text()))
             self.nodeCPT.fillWith(probabilities)
         else:
+            from scipy.stats import norm, maxwell
             # Calculate all the values
             functions = []
             for index, args in enumerate(self.HistogramArguments, start=1):
@@ -312,6 +311,7 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
                     function = self.getUserFunction(index)
                 functions.append(self.normalize(function, args.vmin.value(), args.vmax.value()))
             # Flatten all the values in a single list
+            from iteration_utilities import deepflatten
             functions = list(deepflatten(functions))
             # Update the cpt with the values
             for cpt, value in zip(self.nodeCPT.loopIn(), functions):
