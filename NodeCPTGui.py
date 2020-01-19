@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from itertools import islice
 
+import matplotlib.pyplot as plt
 from PyQt5 import QtCore, QtGui, QtWidgets
 from iteration_utilities import deepflatten
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from pylab import *
 from scipy.stats import norm, maxwell
 
 
@@ -95,7 +95,7 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
             for index, row in enumerate(range(2, nrows)):
                 self.HistogramArguments.append(HistogramArguments())
                 self.HistogramArguments[index].function = QtWidgets.QComboBox()
-                self.HistogramArguments[index].function.addItems(["Norm", "Maxwell"])
+                self.HistogramArguments[index].function.addItems(["Norm", "Maxwell", "Custom"])
                 self.HistogramArguments[index].vmin = QtWidgets.QDoubleSpinBox()
                 self.HistogramArguments[index].vmin.setRange(-1000, 1000)
                 self.HistogramArguments[index].vmax = QtWidgets.QDoubleSpinBox()
@@ -139,7 +139,7 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
         # plot the data
         for line in self.make_chunks(values, cpt.var_dims[-1]):
             ax.plot(line)
-        title("P(" + self.nodeName + ")")
+        plt.title("P(" + self.nodeName + ")")
         if self.posterior is None:
             legendStr = ""
             for row in range(2, self.grid.rowCount()):
@@ -152,7 +152,7 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
                             legendStr += ", "
                         legendStr += variable + "=" + self.grid.itemAtPosition(row, col).widget().text()
                 legendStr += ")"
-            legend(legendStr.split(";"), loc="best")
+            plt.legend(legendStr.split(";"), loc="best")
         # refresh canvas
         self.canvas.draw()
 
@@ -302,12 +302,14 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
         else:
             # Calculate all the values
             functions = []
-            for args in self.HistogramArguments:
+            for index, args in enumerate(self.HistogramArguments, start=1):
                 function = args.function.currentIndex()
                 if function == 0:
-                    function = norm()
+                    function = norm().pdf
+                elif function == 1:
+                    function = maxwell().pdf
                 else:
-                    function = maxwell()
+                    function = self.getUserFunction(index)
                 functions.append(self.normalize(function, args.vmin.value(), args.vmax.value()))
             # Flatten all the values in a single list
             functions = list(deepflatten(functions))
@@ -344,5 +346,23 @@ class Ui_CPTWindow(QtWidgets.QMainWindow):
 
     # we truncate a pdf, so we need to normalize
     def normalize(self, rv, vmin, vmax):
-        pdf = rv.pdf(linspace(vmin, vmax, self.nodeCPT.var_dims[-1]))
+        from numpy import linspace
+        pdf = rv(linspace(vmin, vmax, self.nodeCPT.var_dims[-1]))
         return pdf / sum(pdf)
+
+    def getUserFunction(self, index):
+        from sympy import var, lambdify, sympify
+        var('x')
+        while True:
+            func, ok = QtWidgets.QInputDialog.getText(QtWidgets.QWidget(), 'Input Dialog',
+                                                      'Enter function of row n° ' + str(
+                                                          index) + ':')  # use dialog to get node value to be added
+            if "x" in func:
+                break
+            else:
+                print("All'interno della funzione ci dev'essere la variabile x, riprova")
+
+        func = lambdify(x, sympify(func))
+        print("Test funzione:")
+        print("La tua funzione con input 2 da come risultato: {}\n\n".format(func(2)))
+        return func
