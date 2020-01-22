@@ -41,6 +41,8 @@ class InputDialog(QDialog):
         label.setText("Maximum:")
         self.grid.addWidget(label, 0, 1)
         self.spinBoxes = [QtWidgets.QSpinBox(), QtWidgets.QSpinBox()]
+        self.spinBoxes[0].setMaximum(1000)
+        self.spinBoxes[1].setMaximum(1000)
         self.grid.addWidget(self.spinBoxes[0], 1, 0)
         self.grid.addWidget(self.spinBoxes[1], 1, 1)
         button = QtWidgets.QPushButton('OK', self)
