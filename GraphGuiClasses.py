@@ -253,8 +253,8 @@ class GraphScene(QtWidgets.QGraphicsScene):
                     self.movingNode = node
             else:
                 # Update node position
-                self.movingNode.x = event.scenePos().x()
-                self.movingNode.y = event.scenePos().y()
+                self.movingNode.x = event.scenePos().x() - 20
+                self.movingNode.y = event.scenePos().y() - 20
                 # Updates arcs
                 for edgeNode in self.movingNode.parents + self.movingNode.children:
                     try:
